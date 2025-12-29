@@ -69,6 +69,22 @@ mongoose.connect(mongoUri)
   .catch(err => console.error('MongoDB error:', err));
 
 // Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'MoneyPay API Server',
+    status: 'Running',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      transactions: '/api/transactions',
+      admin: '/api/admin',
+      notifications: '/api/notifications',
+      withdrawals: '/api/withdrawals',
+      health: '/api/health'
+    }
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);
