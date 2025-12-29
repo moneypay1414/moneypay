@@ -345,7 +345,29 @@ The application is fully responsive with breakpoints:
 
 ## 🚀 Deployment
 
-### Backend Deployment (Heroku)
+### Backend Deployment Options
+
+#### Option 1: Railway (Recommended)
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login and deploy
+railway login
+cd backend
+railway init
+railway up
+```
+
+#### Option 2: Render
+```bash
+# Connect your GitHub repo to Render
+# Set build command: npm install
+# Set start command: npm start
+# Add environment variables in Render dashboard
+```
+
+#### Option 3: Heroku
 ```bash
 cd backend
 git init
@@ -355,11 +377,74 @@ git push heroku main
 ```
 
 ### Frontend Deployment (Vercel)
+
+#### Step 1: Prepare Environment Variables
 ```bash
 cd frontend
-npm install -g vercel
-vercel
+cp .env.example .env.local
+# Edit .env.local with your backend API URL
 ```
+
+#### Step 2: Deploy to Vercel
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login to Vercel
+vercel login
+
+# Deploy
+cd frontend
+vercel
+
+# For production deployment
+vercel --prod
+```
+
+#### Step 3: Configure Environment Variables in Vercel
+1. Go to your Vercel dashboard
+2. Select your project
+3. Go to Settings → Environment Variables
+4. Add: `VITE_API_URL=https://your-backend-api-url.com/api`
+
+#### Alternative: Vercel Dashboard Deployment
+1. Connect your GitHub repository to Vercel
+2. Set build settings:
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm install`
+3. Add environment variables in the dashboard
+4. Deploy!
+
+### Environment Variables Required
+
+#### Backend (.env)
+```
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/moneypay
+JWT_SECRET=your-super-secret-jwt-key
+TWILIO_ACCOUNT_SID=your-twilio-sid
+TWILIO_AUTH_TOKEN=your-twilio-token
+TWILIO_PHONE_NUMBER=your-twilio-number
+```
+
+#### Frontend (.env.local)
+```
+VITE_API_URL=https://your-backend-api-url.com/api
+```
+
+### Quick Deployment
+
+#### Using Deployment Scripts
+```bash
+# For Linux/Mac
+./deploy.sh
+
+# For Windows
+deploy.bat
+```
+
+This will build the frontend and provide deployment instructions.
 
 ## 🤝 Contributing
 

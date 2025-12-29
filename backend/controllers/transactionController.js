@@ -491,10 +491,20 @@ export const getTransactionStats = async (req, res) => {
       transfersReceivedAmount: 0
     };
 
+    // Get recent transactions for chart
+    const recentTransactions = await Transaction.find({
+      $or: [{ sender: req.userId }, { receiver: req.userId }]
+    })
+      .populate('sender', '_id name phone')
+      .populate('receiver', '_id name phone')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
     res.json({
       ...result,
       pendingAgentCommission: pendingComm.pendingAgentCommission || 0,
-      pendingCompanyCommission: pendingComm.pendingCompanyCommission || 0
+      pendingCompanyCommission: pendingComm.pendingCompanyCommission || 0,
+      recentTransactions
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

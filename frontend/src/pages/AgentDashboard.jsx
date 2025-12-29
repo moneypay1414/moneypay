@@ -90,6 +90,81 @@ export default function AgentDashboard() {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5);
 
+  // Process chart data from transactions
+  const processChartData = () => {
+    if (!transactions.length) return chartData;
+
+    const now = new Date();
+    const weeks = [];
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - (i * 7));
+      weeks.push({
+        label: `Week ${4 - i}`,
+        start: weekStart,
+        handled: 0
+      });
+    }
+
+    transactions.forEach(tx => {
+      const txDate = new Date(tx.createdAt);
+      const weekIndex = weeks.findIndex(week => txDate >= week.start);
+      if (weekIndex !== -1) {
+        // For agents, "handled" means money received from users (transfers and withdrawals)
+        if ((tx.type === 'transfer' || tx.type === 'user_withdraw') && 
+            tx.receiver?._id?.toString() === user?._id?.toString()) {
+          weeks[weekIndex].handled += tx.amount;
+        }
+      }
+    });
+
+    return {
+      labels: weeks.map(w => w.label),
+      datasets: [
+        {
+          label: 'Handled (SSP)',
+          data: weeks.map(w => w.handled),
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.1)',
+          tension: 0.4,
+          fill: true
+        }
+      ]
+    };
+  };
+
+  // Process doughnut data from transactions
+  const processDoughnutData = () => {
+    if (!transactions.length) return doughnutData;
+
+    const typeCounts = {
+      transfer: 0,
+      user_withdraw: 0,
+      agent_cash_out_money: 0
+    };
+
+    transactions.forEach(tx => {
+      if (typeCounts.hasOwnProperty(tx.type)) {
+        typeCounts[tx.type]++;
+      }
+    });
+
+    const total = Object.values(typeCounts).reduce((sum, count) => sum + count, 0);
+    const percentages = Object.values(typeCounts).map(count => total > 0 ? Math.round((count / total) * 100) : 0);
+
+    return {
+      labels: ['Transfers', 'Withdrawals', 'Cash-outs'],
+      datasets: [
+        {
+          data: percentages,
+          backgroundColor: ['#2563eb', '#f59e0b', '#10b981'],
+          borderColor: '#fff',
+          borderWidth: 2
+        }
+      ]
+    };
+  };
+
   const chartData = {
     labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
     datasets: [
@@ -196,7 +271,7 @@ export default function AgentDashboard() {
             {loading ? (
               <p className="text-center text-muted">Loading chart...</p>
             ) : (
-              <Line data={chartData} options={{ responsive: true, maintainAspectRatio: true }} />
+              <Line data={processChartData()} options={{ responsive: true, maintainAspectRatio: true }} />
             )}
           </div>
         </div>
@@ -210,7 +285,7 @@ export default function AgentDashboard() {
               <p className="text-center text-muted">Loading chart...</p>
             ) : (
               <div style={{ maxHeight: '2000px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false }} />
+                <Doughnut data={processDoughnutData()} options={{ responsive: true, maintainAspectRatio: false }} />
               </div>
             )}
           </div>

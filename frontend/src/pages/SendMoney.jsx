@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '../context/store';
 import { transactionAPI } from '../utils/api';
-import QRCode from 'qrcode.react';
+//import QRCode from 'qrcode.react';
 import Footer from '../components/Footer';
 import '../styles/send-money.css';
 

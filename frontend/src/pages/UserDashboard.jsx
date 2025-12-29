@@ -14,14 +14,47 @@ export default function UserDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [chartData, setChartData] = useState({
+    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+    datasets: [
+      {
+        label: 'Sent (SSP)',
+        data: [0, 0, 0, 0],
+        borderColor: '#ef4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        tension: 0.4,
+        fill: true
+      },
+      {
+        label: 'Received (SSP)',
+        data: [0, 0, 0, 0],
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  });
+  const [doughnutData, setDoughnutData] = useState({
+    labels: ['Transfers', 'Withdrawals', 'Top-ups', 'Deposits'],
+    datasets: [
+      {
+        data: [0, 0, 0, 0],
+        backgroundColor: ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6'],
+        borderColor: '#fff',
+        borderWidth: 2
+      }
+    ]
+  });
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const { data } = await transactionAPI.getStats();
-        setStats(data);
+        setStats(data || { recentTransactions: [] });
       } catch (error) {
         console.error('Failed to fetch stats:', error);
+        setStats({ recentTransactions: [] }); // Set empty data on error
       } finally {
         setLoading(false);
       }
@@ -30,39 +63,97 @@ export default function UserDashboard() {
     fetchStats();
   }, []);
 
-  const chartData = {
-    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-    datasets: [
-      {
-        label: 'Sent (SSP)',
-        data: [5000, 7000, 6500, 8000],
-        borderColor: '#ef4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        tension: 0.4,
-        fill: true
-      },
-      {
-        label: 'Received (SSP)',
-        data: [10000, 12000, 11500, 13000],
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
-        fill: true
-      }
-    ]
-  };
+  // Process chart data when stats change
+  useEffect(() => {
+    if (stats && user) {
+      const transactions = stats.recentTransactions || [];
+      if (transactions.length > 0) {
+        const now = new Date();
+        const weeks = [];
+        for (let i = 3; i >= 0; i--) {
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() - (i * 7));
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 7);
+          weeks.push({
+            label: `Week ${4 - i}`,
+            start: weekStart,
+            end: weekEnd,
+            sent: 0,
+            received: 0
+          });
+        }
 
-  const doughnutData = {
-    labels: ['Transfers', 'Withdrawals', 'Others'],
-    datasets: [
-      {
-        data: [60, 30, 10],
-        backgroundColor: ['#2563eb', '#f59e0b', '#10b981'],
-        borderColor: '#fff',
-        borderWidth: 2
+        transactions.forEach(tx => {
+          const txDate = new Date(tx.createdAt);
+          const weekIndex = weeks.findIndex(week => txDate >= week.start && txDate < week.end);
+          if (weekIndex !== -1) {
+            if (tx.sender?._id?.toString() === user?._id?.toString()) {
+              weeks[weekIndex].sent += tx.amount;
+            }
+            if (tx.receiver?._id?.toString() === user?._id?.toString()) {
+              weeks[weekIndex].received += tx.amount;
+            }
+          }
+        });
+
+        const newChartData = {
+          labels: weeks.map(w => w.label),
+          datasets: [
+            {
+              label: 'Sent (SSP)',
+              data: weeks.map(w => w.sent),
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              tension: 0.4,
+              fill: true
+            },
+            {
+              label: 'Received (SSP)',
+              data: weeks.map(w => w.received),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              tension: 0.4,
+              fill: true
+            }
+          ]
+        };
+
+        setChartData(newChartData);
+
+        // Process doughnut data
+        const typeCounts = {
+          transfer: 0,
+          withdrawal: 0,
+          topup: 0,
+          agent_deposit: 0
+        };
+
+        transactions.forEach(tx => {
+          if (typeCounts.hasOwnProperty(tx.type)) {
+            typeCounts[tx.type]++;
+          }
+        });
+
+        const total = Object.values(typeCounts).reduce((sum, count) => sum + count, 0);
+        const percentages = Object.values(typeCounts).map(count => total > 0 ? Math.round((count / total) * 100) : 0);
+
+        const newDoughnutData = {
+          labels: ['Transfers', 'Withdrawals', 'Top-ups', 'Deposits'],
+          datasets: [
+            {
+              data: percentages,
+              backgroundColor: ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6'],
+              borderColor: '#fff',
+              borderWidth: 2
+            }
+          ]
+        };
+
+        setDoughnutData(newDoughnutData);
       }
-    ]
-  };
+    }
+  }, [stats, user]);
 
   return (
     <>
@@ -121,6 +212,8 @@ export default function UserDashboard() {
           <div className="card-body">
             {loading ? (
               <p className="text-center text-muted">Loading chart...</p>
+            ) : (stats?.recentTransactions || []).length === 0 ? (
+              <p className="text-center text-muted">No transactions yet. Start sending or receiving money to see your history!</p>
             ) : (
               <Line data={chartData} options={{ responsive: true, maintainAspectRatio: true }} />
             )}
@@ -134,6 +227,8 @@ export default function UserDashboard() {
           <div className="card-body">
             {loading ? (
               <p className="text-center text-muted">Loading chart...</p>
+            ) : (stats?.recentTransactions || []).length === 0 ? (
+              <p className="text-center text-muted">No transactions yet. Start sending or receiving money to see your transaction types!</p>
             ) : (
               <div style={{ maxHeight: '600px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false }} />
